@@ -3,11 +3,15 @@ PROG := $(OBJDIR)/$(PLATFORM)/$(PROGNAME)
 LIBNAME := lib$(PLATFORM).a
 QEMU := qemu-system-aarch64
 
+#KERNEL := /home/mt/work/android-kernel/common/arch/arm64/boot/Image
 KERNEL := $(KERNEL_DIR)/arch/arm64/boot/Image
 #KERNEL := $(HOME)/x0/Image
-IMAGE :=  $(KERNEL_DIR)/../images/host/ubuntuhost.qcow2
+IMAGE :=  $(PWD)/images/host/ubuntuhost.qcow2
+IC_LOADER := $(PWD)/images/host/ic_loader.bin
 VMLINUX := $(KERNEL_DIR)/vmlinux
+#KERNEL_OPTS := kvm-arm.mode=protected kvm-arm.protected_modules=tstmod root=/dev/vda1 console=ttyAMA0 mem=8G nokaslr loglevel=8 rw
 KERNEL_OPTS := kvm-arm.mode=protected root=/dev/vda1 console=ttyAMA0 mem=8G nokaslr loglevel=8 rw
+##KERNEL_OPTS := kvm-arm.mode=protected root=/dev/vda1 console=ttyAMA0 mem=8G nokaslr loglevel=8 rw system.unit=rescue.target
 WAYOUT := $(shell exec ip route get 1.1.1.1 | grep -oP 'src \K\S+')
 PORT := 10022
 #DRIVE := -drive file=$(IMAGE),format=qcow2,if=sd,id=ubu-sd -device virtio-blk-device,drive=ubu-sd
@@ -43,9 +47,15 @@ HYP_IMAGE := -device loader,file=$(PROG).bin,addr=0xC0000000,force-raw=true
 endif
 
 QEMUOPTS := --accel tcg,thread=multi -d $(QEMUDEBUGOPTS) $(QEMUDEBUGLOG) $(DEBUGOPTS) \
-	    -machine virt,virtualization=on,secure=off,gic-version=3 \
+	    -machine virt,virtualization=on,secure=off,gic-version=3,iommu="smmuv3" \
 	    -cpu max,sve=off,lpa2=off -smp 4 -m 8G $(NETWORK) $(USB) $(BOOTIMG) \
 	    -kernel $(KERNEL) -append '$(KERNEL_OPTS)'
+ifeq ($(LOAD_KIC),1)
+QEMUOPTS := $(QEMUOPTS) \
+	    -dtb kic.dtb \
+	   -device loader,file=$(IC_LOADER),addr=0x40001000
+endif
+QEMUOPTS := $(QEMUOPTS) -kernel $(KERNEL) -append '$(KERNEL_OPTS)'
 
 ifeq ($(DEBUGGER),1)
 QEMUOPTS := $(QEMUOPTS) -S -s
@@ -61,6 +71,8 @@ ifeq ($(GRAPHICS),1)
 QEMUCMD := $(QEMUCMD) -device virtio-gpu-gl-pci,id=gpu0 -display egl-headless -spice $(SPICEOPTS) $(VDAGENT)
 endif
 
+QEMUCMD-DTB :=  $(QEMUCMD) -machine dumpdtb=qemu.dtb 
+
 include $(BASE_DIR)/core/common.mk
 
 all: run
@@ -70,12 +82,20 @@ run:
 ifeq ($(GRAPHICS),1)
 	@echo "Graphics available at 'spice+unix://$(SPICESOCK)'"
 endif
+ifeq ($(LOAD_KIC),1)
+	@echo "KIC is loaded by QEMU "
+endif
 	@echo "Host ssh login is available via $(WAYOUT):$(PORT)"
 	@echo "------------------------------------------------------------------------------------------"
 	@rm -f $(SPICESOCK)
 	@which  $(QEMU)
 	@echo $(QEMUCMD)
 	@$(QEMUCMD)
+
+generate-dtb: 
+	@echo $(QEMUCMD-DTB)
+	@$(QEMUCMD-DTB)
+	dtc -O dts -o qemu.dts -I dtb qemu.dtb
 
 poorman:
 	@CROSS_COMPILE=$(CROSS_COMPILE) PROG=$(PROG) BASE_DIR=$(BASE_DIR) VMLINUX=$(VMLINUX) \
@@ -86,4 +106,4 @@ gdb:
 		$(VMLINUX)
 
 FORCE:
-	
+

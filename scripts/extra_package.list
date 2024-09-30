@@ -17,3 +17,4 @@ pciutils
 bonnie++
 numactl
 htop
+device-tree-compiler

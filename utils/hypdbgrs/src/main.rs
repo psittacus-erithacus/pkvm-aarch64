@@ -88,7 +88,7 @@ fn parse_target(s: &str) -> Result<u32, String> {
     match s {
         "hyp" => Ok(0),
         "host" => Ok(1),
-        "guest" => Ok(2),
+        "guest" => Ok(0x1000),
         _ => Err(String::from(s)),
     }
 }

@@ -1,17 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0-only
-
-#include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/module.h>
-#include <linux/mm.h>
-#include <asm-generic/ioctls.h>
-#include <linux/slab.h>
-#include <asm/kvm_host.h>
+#include <linux/kernel.h>
 #include "hypdbg-drv.h"
 #include <asm/kvm_pkvm_module.h>
 
-MODULE_DESCRIPTION("Hypervisor debugger module for userspace");
+MODULE_DESCRIPTION("Pkvm debug tools module");
 MODULE_LICENSE("GPL v2");
-
 #define DBG_BUFF_SIZE (0x4000)
 #define DEVICE_NAME "hypdbg"
 #define HYP_DBG_CALL_INIT		0x0
@@ -26,7 +20,10 @@ static int dopen;
 static struct shared_buf *buffer;
 extern int pkvm_mod_dbg_tools;
 
-int hyp_dbg(u64 buf, u32 *size, u64 param1, u64 param2, u64 param3, u64 param4);
+int __kvm_nvhe_pkvm_driver_hyp_init(const struct pkvm_module_ops *ops);
+void __kvm_nvhe_pkvm_driver_hyp_hvc(struct user_pt_regs *regs);
+
+int pkvm_mod_dbg_tools;
 
 static int device_open(struct inode *inode, struct file *filp)
 {
@@ -150,7 +147,7 @@ device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		ret = pkvm_el2_mod_call(pkvm_mod_dbg_tools, HYP_DBG_CALL_COUNT_SHARED,
 					p->id, p->addr, p->size, 0);
 		break;
-		
+
 	case HYPDBG_COUNT_SHARED_S2_MAPPING:
 	    ret = pkvm_el2_mod_call(pkvm_mod_dbg_tools, HYP_DBG_CALL_PRINT_S2,
 				    p->id, p->size, p->lock, 0);
@@ -176,6 +173,7 @@ err:
 	return ret;
 }
 
+
 static const struct file_operations fops = {
 	.read = device_read,
 	.open = device_open,
@@ -183,10 +181,22 @@ static const struct file_operations fops = {
 	.unlocked_ioctl = device_ioctl,
 };
 
-int init_module(void)
+static int __init pkvm_driver_init(void)
 {
+	unsigned long token;
+	int ret;
+
 	pr_info("HYPDBG hypervisor debugger driver\n");
 
+	ret = pkvm_load_el2_module(__kvm_nvhe_pkvm_driver_hyp_init, &token);
+	if (ret)
+		return ret;
+	ret = pkvm_register_el2_mod_call(__kvm_nvhe_pkvm_driver_hyp_hvc, token);
+	if (ret < 0)
+		return ret;
+
+
+	pkvm_mod_dbg_tools = ret;
 	major = register_chrdev(0, DEVICE_NAME, &fops);
 
 	if (major < 0) {
@@ -197,8 +207,8 @@ int init_module(void)
 	buffer = alloc_pages_exact(DBG_BUFF_SIZE, GFP_KERNEL);
 	if (!buffer)
 		return -ENOMEM;
-
 	return 0;
+
 }
 
 void cleanup_module(void)
@@ -214,3 +224,4 @@ void cleanup_module(void)
 		unregister_chrdev(major, DEVICE_NAME);
 	major = 0;
 }
+module_init(pkvm_driver_init);

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# pkvm module for debugging of hyvervisor
+#
+
+config PKVM_MODULE_DEBUG_TOOLS
+	bool "pkvm module for debugging of hyvervisor"
+	depends on KVM
+	default n
+	help
+	  Enables debug tool for EL2.
+
+
+config PKVM_MODULE_DEBUG_UART_ADDR
+	hex "Physical address of the PL011 for EL2 to use"
+	depends on PKVM_MODULE_DEBUG_TOOLS
+	default 0x0900000
+	help
+	  Physical address of UART in the host.	  

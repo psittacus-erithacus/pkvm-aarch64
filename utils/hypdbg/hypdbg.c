@@ -13,8 +13,11 @@
 //#include <linux/keyctl.h>
 typedef uint64_t u64;
 typedef uint32_t u32;
+typedef uint8_t u8;
 
 #include "hypdbg-drv.h"
+
+#define BUFSIZE 4096
 
 static char *prog_name;
 void usage(void)
@@ -36,7 +39,7 @@ static u64 get_arg(char *str, u64 *dst)
 
 int count_shared(int fd, u32 *len, u64 id, u64 size, u64 lock)
 {
-	struct count_shared_params params;
+	struct ioctl_params params;
 	int ret;
 
 	printf("count_shared_\n");
@@ -54,7 +57,7 @@ int count_shared(int fd, u32 *len, u64 id, u64 size, u64 lock)
 
 int print_s2_mapping(int fd, u32 *len, u64 id, u64 addr, u64 size)
 {
-	struct s2_mapping_params params;
+	struct ioctl_params params;
 	int ret;
 	printf("print_s2_mappinns\n");
 	params.dlen = *len;
@@ -132,7 +135,7 @@ int main(int argc, char *argv[])
 	u32 rlen = 0;
 	prog_name = argv[0];
 	char *resp = 0;;
-
+	int cnt;
 	if (argc >= 2)
 		call = argv[1][0] - '0';
 
@@ -150,31 +153,31 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	if (!rlen) {
-		printf("no data \n");
-		goto err;
-	}
-	resp = malloc(rlen);
+	resp = malloc(BUFSIZE);
 	if (!resp) {
 		printf("Malloc error\n");
 		goto err;
 	}
-	read(fd, resp, rlen);
-	printf("%s\n",resp);
+	int tmp = 0;
 
-/*
 	do {
-		xx = read(fd, resp, rlen);
-		printf("%s\n",resp);
-	} while (xx);
-*/
+		memset(resp,0,BUFSIZE);
+		cnt = read(fd, resp, BUFSIZE);
+		if (cnt < 0) {
+			printf("read error %d\n",cnt);
+			return 1;
+		}
+		printf("%s", resp);
+	} while (cnt);
+stop:
+	printf("End\n");
+
 err:
 	if (resp)
 		free(resp);
 
 	if (fd >= 0)
 		close(fd);
-
 
 	return ret;
 }

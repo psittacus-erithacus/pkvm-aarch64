@@ -1,0 +1,58 @@
+dir /dev 755 0 0
+nod /dev/console 0600 0 0 c 5 1
+nod /dev/vda1 07550 0 0 b 254 1
+dir /root 0777 0 0
+dir /usr 755 000 000
+dir /usr/lib 755 00 000
+dir /usr/bin 755 00 000
+dir /usr/sbin 755 00 000
+dir /usr/lib/aarch64-linux-gnu 755 000 000
+slink /bin /usr/bin 755 0 0 
+slink /lib /usr/lib 777 0 0 
+dir /proc 755 0 0
+dir /sys 755 0 0
+dir /mnt 755 0 0
+dir /etc 755 0 0
+#dir /usr/lib/modules 755 0 0 
+#dir /usr/lib/modules/6.6.57-g032f14bdb12a-dirty 755 0 0 
+
+
+
+file /usr/bin/busybox  ${TST_ROOT}/usr/bin/busybox 777 0 0
+file /usr/bin/sh       ${TST_ROOT}/usr/bin/sh 755 0 0
+file /usr/bin/bash     ${TST_ROOT}/usr/bin/bash 755 0 0
+file /usr/bin/kmod     ${BASE_DIR}/host-src/kmod/tools/kmod 755 0 0
+file /usr/bin/ls       ${TST_ROOT}/usr/bin/ls 755 0 0
+file /usr/bin/mkdir    ${TST_ROOT}/usr/bin/mkdir 755 0 0
+file /usr/bin/mknod    ${TST_ROOT}/usr/bin/mknod 755 0 0
+file /usr/bin/cat      ${TST_ROOT}/usr/bin/cat 755 0 0
+file /usr/bin/uname    ${TST_ROOT}/usr/bin/uname 755 0 0
+file /usr/bin/ln       ${TST_ROOT}/usr/bin/ln 755 0 0
+file /usr/bin/echo     ${TST_ROOT}/usr/bin/echo 755 0 0
+
+#file /usr/lib/aarch64-linux-gnu/libcrypto.so.3           ${TST_ROOT}/usr/lib/aarch64-linux-gnu/libcrypto.so.3 755 0 0
+
+#file /usr/lib/aarch64-linux-gnu//libc.so.6               ${BASE_DIR}/host-src/klibc/usr/klibc/libc.so 755 0 0
+file /usr/lib/aarch64-linux-gnu//libc.so.6                ${BASE_DIR}/buildtools/lib64/libc.so.6 755 0 0
+#file /usr/lib/aarch64-linux-gnu//libc.so.6               ${TST_ROOT}/usr/lib/aarch64-linux-gnu/libc.so.6 755 0 0
+
+#file /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1    ${BASE_DIR}/buildtools/lib/ld-linux-aarch64.so.1 755 0 0
+file /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1    ${TST_ROOT}/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1 755 0 0
+
+#file /usr/lib/aarch64-linux-gnu/libselinux.so.1          ${TST_ROOT}/usr/lib/aarch64-linux-gnu/libselinux.so.1 755 0 0
+#file /usr/lib/aarch64-linux-gnu/libpcre2-8.so.0          ${TST_ROOT}/usr/lib/aarch64-linux-gnu/libpcre2-8.so 755 0 0
+#file /usr/lib/aarch64-linux-gnu/libzstd.so.1             ${TST_ROOT}/usr/lib/aarch64-linux-gnu/libzstd.so.1 755 0 0
+#file /usr/lib/aarch64-linux-gnu/liblzma.so.5             ${TST_ROOT}/usr/lib/aarch64-linux-gnu/liblzma.so.5 755 0 0
+#file /usr/lib/aarch64-linux-gnu/libtinfo.so.6            ${TST_ROOT}/usr/lib/aarch64-linux-gnu/libtinfo.so.6 755 0 0
+slink /usr/sbin/insmod /usr/bin/kmod 755 0 0
+slink /usr/sbin/lsmod /usr/bin/kmod 755 0 0
+slink /usr/sbin/depmod /usr/bin/kmod 755 0 0
+slink /usr/sbin/rmmod /usr/bin/kmod 755 0 0
+slink /usr/sbin/modinfo /usr/bin/kmod 755 0 0
+slink /usr/sbin/modprobe /usr/bin/kmod 755 0 0
+slink /usr/lib/ld-linux-aarch64.so.1 /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1 755 0 0
+file /pkvm-dbg-tools.ko             ${BASE_DIR}/host-src/pkvm-dbg-tools.ko 755 0 0 
+#file /hyp_tst.ko              ${BASE_DIR}/host-src/755 0 0 
+#file /init                  ${TST_ROOT}/init 755 0 0
+
+#file /usr/lib/modules/6.6.57-g032f14bdb12a-dirty/hyp_tst.ko              ${ TST_ROOT}/root/hyp_tst.ko 777 0 0

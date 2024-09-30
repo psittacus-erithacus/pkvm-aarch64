@@ -1,12 +1,13 @@
 include core/vars.mk
 
 DIRS := tools host-kernel ubuntu-template target-crosvm hostimage guest-kernel guestimage
+none:
 
 all: $(DIRS)
 
-clean: host-kernel-clean ubuntu-template-clean guest-kernel-clean target-crosvm-clean tools-clean
+do_clean: host-kernel-clean ubuntu-template-clean guest-kernel-clean target-crosvm-clean tools-clean
 
-distclean: host-kernel-distclean ubuntu-template-distclean guest-kernel-distclean target-crosvm-distclean tools-distclean
+do_distclean: host-kernel-distclean ubuntu-template-distclean guest-kernel-distclean target-crosvm-distclean tools-distclean
 
 $(FETCH_SOURCES):
 	@echo "Fetching sources.."
@@ -34,13 +35,18 @@ gdb:
 run:
 	$(MAKE) CROSS_COMPILE=$(CROSS_COMPILE) KERNEL_DIR=$(HOST_KERNEL_DIR) -Cplatform/$(PLATFORM) run
 
+dtb:
+	$(MAKE) CROSS_COMPILE=$(CROSS_COMPILE) KERNEL_DIR=$(HOST_KERNEL_DIR) -Cplatform/$(PLATFORM) generate-dtb
+
 poorman:
 	$(MAKE) CROSS_COMPILE=$(CROSS_COMPILE) KERNEL_DIR=$(HOST_KERNEL_DIR) -Cplatform/$(PLATFORM) poorman
 
 guest-kernel:
 	@./scripts/guest-kernel-patch-fiddle.sh patch
 	$(MAKE) -C$(GUEST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j$(NJOBS) defconfig Image modules
-
+guest-kernel-no-def:
+	@./scripts/guest-kernel-patch-fiddle.sh patch
+	$(MAKE) -C$(GUEST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j$(NJOBS)  Image modules
 guest-kernel-clean:
 	$(MAKE) -C$(GUEST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 mrproper
 
@@ -49,13 +55,20 @@ guest-kernel-distclean:
 	cd $(GUEST_KERNEL_DIR); git clean -xfd
 
 host-kernel:
-	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j$(NJOBS) qemu_defconfig Image modules
+	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j$(NJOBS) defconfig Image modules
+host-kernel-no-def:
+	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j$(NJOBS) Image modules
 
 host-kernel-clean:
 	$(MAKE) -C$(HOST_KERNEL_DIR) -j$(NJOBS) mrproper
 	@rm -f $(HOST_KERNEL_DIR)/arch/arm64/kvm/hyp/nvhe/gen-hyprel
 	@rm -f $(HOST_KERNEL_DIR)/arch/arm64/kvm/hyp/nvhe/hyp-reloc.S
 	@rm -rf $(HOST_KERNEL_DIR)/drivers/video/tegra
+
+host-modules:
+	rm -rf images/host/mods/
+	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 ARCH=arm64 INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$(PWD)//images/host/mods modules_install
+	cd $(PWD)/images/host/mods/lib/; tar -cf mods.tar modules
 
 host-kernel-distclean:
 	cd $(HOST_KERNEL_DIR); git clean -xfd
