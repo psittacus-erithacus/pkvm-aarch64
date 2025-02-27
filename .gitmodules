@@ -22,3 +22,6 @@
 [submodule "linux-host"]
 	path = linux-host
 	url = https://github.com/tiiuae/kernel-nvidia-jetson.git
+[submodule "pkvm-module"]
+	path = pkvm-module
+	url = ./pkvm-module/

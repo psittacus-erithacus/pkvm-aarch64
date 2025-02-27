@@ -59,6 +59,15 @@ host-kernel:
 host-kernel-no-def:
 	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j$(NJOBS) Image modules
 
+pkvm-modules:
+	$(MAKE) -C pkvm-module pkvm-module KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu
+pkvm-modules-clean:
+	$(MAKE) -C pkvm-module clean KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu
+host-initramfs:
+	$(MAKE) -C pkvm-module initramfs UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu  KERNEL_DIR=$(HOST_KERNEL_DIR)
+
+host-initramfs-clean:
+	$(MAKE) -C pkvm-module clean  UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu  KERNEL_DIR=$(HOST_KERNEL_DIR)
 host-kernel-clean:
 	$(MAKE) -C$(HOST_KERNEL_DIR) -j$(NJOBS) mrproper
 	@rm -f $(HOST_KERNEL_DIR)/arch/arm64/kvm/hyp/nvhe/gen-hyprel
@@ -67,7 +76,7 @@ host-kernel-clean:
 
 host-modules:
 	rm -rf images/host/mods/
-	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 ARCH=arm64 INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$(PWD)//images/host/mods modules_install
+	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64  INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$(PWD)//images/host/mods modules_install
 	cd $(PWD)/images/host/mods/lib/; tar -cf mods.tar modules
 
 host-kernel-distclean:
@@ -127,4 +136,4 @@ hostimage:
 guest2host:
 	@sudo -E ./scripts/add_guest2host.sh $(USER)
 
-.PHONY: all clean target-qemu run $(BUILD_TOOLS) $(DIRS)
+.PHONY: all clean target-qemu host-initramfs run $(BUILD_TOOLS) $(DIRS)
