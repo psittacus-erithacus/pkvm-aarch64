@@ -5,7 +5,8 @@ export ARCH=arm64
 
 ifneq ($(KERNELRELEASE),)
 clean-files := hyp/hyp.lds hyp/hyp-reloc.S
-
+export KBUILD_EXTMOD := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+#include $(KDIR)/Makefile
 #obj-m := hyp_tst.o
 #hyp_tst-y := el1.o hyp/kvm_nvhe.o
 obj-m := pkvm-dbg-tools.o
@@ -18,6 +19,8 @@ else
 all:
 	echo $(CROSS_COMPILE)
 	make -C $(KDIR) M=$(PWD) modules
+	make -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(PWD)/../../initramfs/root modules_install 
+
 clean:
 	make -C $(KDIR) M=$(PWD) clean
 endif

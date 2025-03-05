@@ -1,12 +1,7 @@
 #include <asm/kvm_pkvm_module.h>
 #include <nvhe/dbg_tool_mod.h>
-//#include <nvhe/mem_protect.h>
 #include "hyp_debug.h"
-/*
-#define cpu_reg(ctxt, r)	(ctxt)->regs.regs[r]
-#define DECLARE_REG(type, name, ctxt, reg)	\
-				type name = (type)cpu_reg(ctxt, (reg))
-*/
+
 struct dbg_tool_ops *dops;
 const struct pkvm_module_ops *ops;
 unsigned long arm64_kvm_hyp_debug_uart_addr;
@@ -30,7 +25,7 @@ int pkvm_driver_hyp_init(const struct pkvm_module_ops *a_ops)
 	int ret;
 
 	ops = a_ops;;
-	dops = ops->get_dbg_ops();
+	dops = ops->get_vendor_ops(PKVM_DBG_TOOLS);
 	ret = create_hyp_debug_uart_mapping();
 	if (ret)
 		return ret;
@@ -43,10 +38,9 @@ int pkvm_driver_hyp_init(const struct pkvm_module_ops *a_ops)
 
 void pkvm_driver_hyp_hvc(struct user_pt_regs *regs)
 {
-//	hyp_print("mod hvc call\n");
-
 	u64 ret = hyp_dbg(regs->regs[1],regs->regs[2],
 			regs->regs[3],regs->regs[4],regs->regs[5]);
+
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 	regs->regs[1] = ret;
 }
