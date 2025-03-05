@@ -101,9 +101,9 @@ ifeq ($(LOAD_KIC),1)
 	@echo "KIC is loaded by QEMU "
 endif
 ifeq ($(USE_INITRAMFS),1)
-		echo "Use initramfs"
+		@echo "Use initramfs"
 else
-		echo Dont use initramfs
+		@echo Dont use initramfs
 endif
 	@echo "Host ssh login is available via $(WAYOUT):$(PORT)"
 	@echo "------------------------------------------------------------------------------------------"

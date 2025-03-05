@@ -60,14 +60,14 @@ host-kernel-no-def:
 	$(MAKE) -C$(HOST_KERNEL_DIR) CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j$(NJOBS) Image modules
 
 pkvm-modules:
-	$(MAKE) -C pkvm-module pkvm-modules KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu
+	$(MAKE) -C pkvm-modules pkvm-modules KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu
 
 pkvm-modules-clean:
-	$(MAKE) -C pkvm-module clean KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu
+	$(MAKE) -C pkvm-modules clean KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu
 
 host-initramfs:
-	$(MAKE) -C pkvm-module initramfs KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu  
-	$(MAKE) -C pkvm-module install OUT_IMAGE=$(BASE_DIR)/images/host/initramfs.gz
+	$(MAKE) -C pkvm-modules initramfs KERNEL_DIR=$(HOST_KERNEL_DIR) UBUNTU_DIR=$(BASE_DIR)/oss/ubuntu  
+	$(MAKE) -C pkvm-modules install OUT_IMAGE=$(BASE_DIR)/images/host/initramfs.gz
 
 host-kernel-clean:
 	$(MAKE) -C$(HOST_KERNEL_DIR) -j$(NJOBS) mrproper

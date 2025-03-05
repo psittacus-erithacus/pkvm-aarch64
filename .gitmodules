@@ -25,3 +25,6 @@
 [submodule "pkvm-module"]
 	path = pkvm-module
 	url = ./pkvm-module/
+[submodule "pkvm-modules"]
+	path = pkvm-modules
+	url = git@github.com:psittacus-erithacus/pkvm-modules.git
