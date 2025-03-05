@@ -1,13 +1,20 @@
 ROGNAME := hyp
+
 PROG := $(OBJDIR)/$(PLATFORM)/$(PROGNAME)
 LIBNAME := lib$(PLATFORM).a
 QEMU := qemu-system-aarch64
+QEMU_DTFILE := qemu_devtree
 
 KERNEL := $(KERNEL_DIR)/arch/arm64/boot/Image
-#KERNEL := $(HOME)/x0/Image
-IMAGE :=  $(KERNEL_DIR)/../images/host/ubuntuhost.qcow2
+HOST_IMAGE_DIR := $(BASE_DIR)/images/host
+IMAGE :=  $(HOST_IMAGE_DIR)/ubuntuhost.qcow2
+IC_LOADER := $(HOST_IMAGE_DIR)/ic_loader.bin
+INITRAMFS := $(HOST_IMAGE_DIR)/initramfs.gz
+
+KERNEL_PKVM_PARAMS := kvm-arm.mode=protected
+PKVM_MODILES = pkvm-dbg-tools
+
 VMLINUX := $(KERNEL_DIR)/vmlinux
-KERNEL_OPTS := kvm-arm.mode=protected root=/dev/vda1 console=ttyAMA0 mem=8G nokaslr loglevel=8 rw
 WAYOUT := $(shell exec ip route get 1.1.1.1 | grep -oP 'src \K\S+')
 PORT := 10022
 #DRIVE := -drive file=$(IMAGE),format=qcow2,if=sd,id=ubu-sd -device virtio-blk-device,drive=ubu-sd
@@ -18,7 +25,19 @@ NETWORK := -device e1000,netdev=net0 -netdev user,id=net0,host=192.168.7.1,net=1
 COMP_IMG ?= $(OBJDIR)/$(PLATFORM)/hyp-loader
 USE_COMP_IMG ?= 0
 
+KERNEL_OPTS :=  $(KERNEL_PKVM_PARAMS) kvm-arm.protected_modules=$(PKVM_MODILES) root=/dev/vda1 console=ttyAMA0 mem=8G nokaslr loglevel=8 rw
 
+#space between the kernel image and the inittamfs image
+HEXPAD = 0x100000
+#qemu loads the kernel to 0x40200000
+KERNEL_LOAD_ADDR := 0x40200000
+
+PAD =  $(shell printf "%d" $(HEXPAD))
+KLEN := $(shell stat -c %s $(KERNEL))
+KSTART = $(shell printf "%d"  $(KERNEL_LOAD_ADDR))
+INITRAMFS_ADDR = $(shell printf "0x%x" $$(( $(KSTART) +  $(KLEN) + $(PAD) - $(KLEN) % $(PAD) )))
+
+  
 SPICESOCK := /tmp/host
 VDAGENT := -device virtio-serial-pci -device virtserialport,chardev=spicechannel0,name=spice.0 -chardev spicevmc,id=spicechannel0,name=vdagent
 SPICEOPTS := unix=on,addr=$(SPICESOCK),disable-ticketing=on,image-compression=off,streaming-video=all,playback-compression=off,disable-agent-file-xfer=off
@@ -47,28 +66,55 @@ QEMUOPTS := --accel tcg,thread=multi -d $(QEMUDEBUGOPTS) $(QEMUDEBUGLOG) $(DEBUG
 	    -cpu max,sve=off,lpa2=off -smp 4 -m 8G $(NETWORK) $(USB) $(BOOTIMG) \
 	    -kernel $(KERNEL) -append '$(KERNEL_OPTS)'
 
+ifneq (,$(filter 1, $(LOAD_KIC) $(USE_INITRAMFS)))
+EXTRAOPTS :=  -dtb $(QEMU_DTFILE).dtb 
+TMPFILE := $(shell mktemp)
+
+endif
+
+ifeq ($(LOAD_KIC),1)
+EXTRAOPTS += -device loader,file=$(IC_LOADER),addr=0x40001000
+endif
+
+ifeq ($(USE_INITRAMFS),1)
+EXTRAOPTS += -device loader,file=$(INITRAMFS),addr=$(INITRAMFS_ADDR)
+endif
+
+QEMUOPTS := $(QEMUOPTS) -kernel $(KERNEL) -append '$(KERNEL_OPTS)'
+
 ifeq ($(DEBUGGER),1)
 QEMUOPTS := $(QEMUOPTS) -S -s
 endif
 
 ifeq ($(QEMUDEBUG),1)
-QEMUCMD := gdb $(QEMU)-debug -ex "r $(QEMUOPTS) -serial stdio -display none"
+QEMUCMD := gdb $(QEMU)-debug -ex "r $(QEMUOPTS) $(EXTRAOPTS) -serial stdio -display none"
 else
-QEMUCMD := $(QEMU) $(QEMUOPTS) -nographic
+QEMUCMD := $(QEMU) $(QEMUOPTS) $(EXTRAOPTS) -nographic
 endif
 
 ifeq ($(GRAPHICS),1)
 QEMUCMD := $(QEMUCMD) -device virtio-gpu-gl-pci,id=gpu0 -display egl-headless -spice $(SPICEOPTS) $(VDAGENT)
 endif
 
+QEMUCMD-DTB :=   $(QEMU) $(QEMUOPTS) -machine dumpdtb=$(QEMU_DTFILE).dtb -nographic
+
+
 include $(BASE_DIR)/core/common.mk
 
 all: run
 
-run:
+run: generate-dtb 
 	@echo "------------------------------------------------------------------------------------------"
 ifeq ($(GRAPHICS),1)
 	@echo "Graphics available at 'spice+unix://$(SPICESOCK)'"
+endif
+ifeq ($(LOAD_KIC),1)
+	@echo "KIC is loaded by QEMU "
+endif
+ifeq ($(USE_INITRAMFS),1)
+		@echo "Use initramfs"
+else
+		@echo Dont use initramfs
 endif
 	@echo "Host ssh login is available via $(WAYOUT):$(PORT)"
 	@echo "------------------------------------------------------------------------------------------"
@@ -76,6 +122,21 @@ endif
 	@which  $(QEMU)
 	@echo $(QEMUCMD)
 	@$(QEMUCMD)
+
+generate-dtb: 
+	@echo Genetate host dtb file
+	@$(QEMUCMD-DTB)
+	@dtc -O dts -o $(QEMU_DTFILE).dts -I dtb $(QEMU_DTFILE).dtb
+ifeq ($(LOAD_KIC),1)
+	@cp $(QEMU_DTFILE).dts $(TMPFILE)
+	$(CURDIR)/fix-qemu-dts.py -i $(TMPFILE) -o $(QEMU_DTFILE).dts  -K  -s $(shell stat -c %s $(IC_LOADER))
+endif
+ifeq ($(USE_INITRAMFS),1)
+	@cp $(QEMU_DTFILE).dts $(TMPFILE)
+	@$(CURDIR)/fix-qemu-dts.py -i $(TMPFILE) -o $(QEMU_DTFILE).dts  -I \
+	-a $(INITRAMFS_ADDR) -s $(shell stat -c %s $(INITRAMFS))
+endif
+	@dtc -I dts -o $(QEMU_DTFILE).dtb -O dtb $(QEMU_DTFILE).dts
 
 poorman:
 	@CROSS_COMPILE=$(CROSS_COMPILE) PROG=$(PROG) BASE_DIR=$(BASE_DIR) VMLINUX=$(VMLINUX) \
@@ -86,4 +147,3 @@ gdb:
 		$(VMLINUX)
 
 FORCE:
-	
